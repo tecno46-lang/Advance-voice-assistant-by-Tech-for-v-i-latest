@@ -39,163 +39,6 @@ import "com.androlua.LuaDialog"
 import "com.androlua.Http"
 import "android.os.Looper"
 
-local updateInProgress = false
-local updateDlg = nil
-local GITHUB_RAW_URL = "https://raw.githubusercontent.com/tecno46-lang/Advance-voice-assistant-by-Tech-for-v-i-latest/main/"
-local VERSION_URL = GITHUB_RAW_URL .. "version.txt"
-local SCRIPT_URL = GITHUB_RAW_URL .. "main.lua"
-local PLUGIN_PATH = "/storage/emulated/0/解说/Plugins/Advance voice assistant by tech for V I develop by Muhammad hanzla/main.lua"
-
-function checkUpdate()
-    if updateInProgress then return end
-    Http.get(VERSION_URL, function(code, onlineVersion)
-        if code == 200 and onlineVersion then
-            onlineVersion = tostring(onlineVersion):gsub("%s+", "")
-            if onlineVersion and onlineVersion ~= "" then
-                if onlineVersion ~= CURRENT_VERSION then
-                    showUpdateDialog(onlineVersion)
-                else
-                    showLatestVersionDialog()
-                end
-            else
-                speak("Update server returned empty version")
-            end
-        else
-            speak("Failed to check for updates (HTTP " .. tostring(code) .. ")")
-        end
-    end)
-end
-
-function showLatestVersionDialog()
-    local dialog = LuaDialog(service)
-    dialog.setTitle("Up to Date")
-    dialog.setMessage("You are on the latest version (" .. CURRENT_VERSION .. ")")
-    dialog.setButton("OK", function()
-        dialog.dismiss()
-        showSettingsDialog()
-    end)
-    dialog.show()
-end
-
-function showUpdateDialog(onlineVersion)
-    updateDlg = LuaDialog(service)
-    updateDlg.setTitle("New Update Available!")
-    updateDlg.setMessage("A new version (" .. onlineVersion .. ") is available. Would you like to update now?")
-    updateDlg.setButton("Update Now", function()
-        updateDlg.dismiss()
-        service.speak("Downloading update, please wait...")
-        downloadAndInstallUpdate()
-    end)
-    updateDlg.setButton2("Later", function()
-        updateDlg.dismiss()
-    end)
-    updateDlg.show()
-end
-
-function downloadAndInstallUpdate()
-    updateInProgress = true
-    local function performUpdate()
-        Http.get(SCRIPT_URL, function(code, newContent)
-            if code == 200 and newContent then
-                local tempPath = PLUGIN_PATH .. ".temp_update"
-                local backupPath = PLUGIN_PATH .. ".backup"
-                
-                local function restoreFromBackup()
-                    if File(backupPath).exists() then
-                        os.rename(backupPath, PLUGIN_PATH)
-                        return true
-                    end
-                    return false
-                end
-                
-                local function cleanupFiles()
-                    pcall(function() os.remove(tempPath) end)
-                    pcall(function() os.remove(backupPath) end)
-                end
-                
-                local f = io.open(tempPath, "w")
-                if f then
-                    f:write(newContent)
-                    f:close()
-                    
-                    if File(PLUGIN_PATH).exists() then
-                        local backupFile = io.open(PLUGIN_PATH, "r")
-                        if backupFile then
-                            local backupContent = backupFile:read("*a")
-                            backupFile:close()
-                            local bf = io.open(backupPath, "w")
-                            if bf then
-                                bf:write(backupContent)
-                                bf:close()
-                            end
-                        end
-                    end
-                    
-                    local success = pcall(function()
-                        os.remove(PLUGIN_PATH)
-                        os.rename(tempPath, PLUGIN_PATH)
-                    end)
-                    
-                    if success then
-                        cleanupFiles()
-                        local successDialog = LuaDialog(service)
-                        successDialog.setTitle("Update Successful")
-                        successDialog.setMessage("Please restart the plugin.")
-                        successDialog.setButton("OK", function()
-                            successDialog.dismiss()
-                            service.speak("Update successful. Please restart plugin.")
-                        end)
-                        successDialog.show()
-                    else
-                        local restored = restoreFromBackup()
-                        cleanupFiles()
-                        local errorDialog = LuaDialog(service)
-                        if restored then
-                            errorDialog.setTitle("Update Failed")
-                            errorDialog.setMessage("Update failed. Old version restored.")
-                        else
-                            errorDialog.setTitle("Update Failed")
-                            errorDialog.setMessage("Update failed. Please try again.")
-                        end
-                        errorDialog.setButton("OK", function()
-                            errorDialog.dismiss()
-                            if restored then
-                                service.speak("Update failed, old version restored.")
-                            else
-                                service.speak("Update failed, please try again.")
-                            end
-                        end)
-                        errorDialog.show()
-                    end
-                else
-                    local errorDialog = LuaDialog(service)
-                    errorDialog.setTitle("Update Failed")
-                    errorDialog.setMessage("Cannot write temporary file.")
-                    errorDialog.setButton("OK", function()
-                        errorDialog.dismiss()
-                        service.speak("Update failed, cannot write file.")
-                    end)
-                    errorDialog.show()
-                end
-            else
-                local errorDialog = LuaDialog(service)
-                errorDialog.setTitle("Update Failed")
-                errorDialog.setMessage("Cannot download new script.")
-                errorDialog.setButton("OK", function()
-                    errorDialog.dismiss()
-                    service.speak("Update failed, download error.")
-                end)
-                errorDialog.show()
-            end
-            updateInProgress = false
-        end)
-    end
-    local handler = luajava.bindClass("android.os.Handler")(service.getMainLooper())
-    handler.postDelayed(luajava.createProxy("java.lang.Runnable", {
-        run = performUpdate
-    }), 500)
-end
-
 local CONSTANTS = {
     VERSION = "1.2",
     PREF_NAME = "Hanzla_Final_Safety_V7_Enhanced",
@@ -212,6 +55,15 @@ local CONSTANTS = {
 }
 
 local CURRENT_VERSION = CONSTANTS.VERSION
+
+-- Update feature variables
+local GITHUB_RAW_URL = "https://raw.githubusercontent.com/tecno46-lang/Advance-voice-assistant-by-Tech-for-v-i-latest/main/"
+local VERSION_URL = GITHUB_RAW_URL .. "version.txt"
+local SCRIPT_URL = GITHUB_RAW_URL .. "main.lua"
+local PLUGIN_PATH = "/storage/emulated/0/解说/Plugins/Advance voice assistant by tech for V I develop by Muhammad hanzla/main.lua"
+local updateInProgress = false
+local updateDlg = nil
+local updateAvailable = false
 
 local WHATSAPP_PACKAGES = {
     messenger = "com.whatsapp",
@@ -296,6 +148,163 @@ local DEFAULT_COMMANDS = {
     ["talk with me"] = "talk with me",
     ["check update"] = "check update"
 }
+
+-- Update Functions
+function checkUpdate()
+    if updateInProgress then return end
+    
+    Http.get(VERSION_URL, function(code, onlineVersion)
+        if code == 200 and onlineVersion then
+            onlineVersion = tostring(onlineVersion):match("^%s*(.-)%s*$")
+            if onlineVersion and onlineVersion ~= CURRENT_VERSION then
+                updateAvailable = true
+                showUpdateDialog(onlineVersion)
+            end
+        end
+    end)
+end
+
+function showUpdateDialog(onlineVersion)
+    local handler = Handler(Looper.getMainLooper())
+    handler.post(luajava.createProxy("java.lang.Runnable", {
+        run = function()
+            updateDlg = LuaDialog(service)
+            updateDlg.setTitle("New Update Available!")
+            updateDlg.setMessage("A new version (" .. onlineVersion .. ") is available. Would you like to update now?")
+            
+            updateDlg.setButton("Update Now", function()
+                updateDlg.dismiss()
+                downloadAndInstallUpdate()
+            end)
+            
+            updateDlg.setButton2("Later", function()
+                updateDlg.dismiss()
+            end)
+            
+            updateDlg.show()
+        end
+    }))
+end
+
+function downloadAndInstallUpdate()
+    updateInProgress = true
+    
+    local function performUpdate()
+        Http.get(SCRIPT_URL, function(code, newContent)
+            if code == 200 and newContent then
+                local tempPath = PLUGIN_PATH .. ".temp_update"
+                local backupPath = PLUGIN_PATH .. ".backup"
+                
+                local function restoreFromBackup()
+                    if File(backupPath).exists() then
+                        os.rename(backupPath, PLUGIN_PATH)
+                        return true
+                    end
+                    return false
+                end
+                
+                local function cleanupFiles()
+                    pcall(function() os.remove(tempPath) end)
+                    pcall(function() os.remove(backupPath) end)
+                end
+                
+                local f = io.open(tempPath, "w")
+                if f then
+                    f:write(newContent)
+                    f:close()
+                    
+                    if File(PLUGIN_PATH).exists() then
+                        local backupFile = io.open(PLUGIN_PATH, "r")
+                        if backupFile then
+                            local backupContent = backupFile:read("*a")
+                            backupFile:close()
+                            local bf = io.open(backupPath, "w")
+                            if bf then
+                                bf:write(backupContent)
+                                bf:close()
+                            end
+                        end
+                    end
+                    
+                    local success = pcall(function()
+                        os.remove(PLUGIN_PATH)
+                        os.rename(tempPath, PLUGIN_PATH)
+                    end)
+                    
+                    if success then
+                        cleanupFiles()
+                        updateAvailable = false
+                        
+                        local handler = Handler(Looper.getMainLooper())
+                        handler.post(luajava.createProxy("java.lang.Runnable", {
+                            run = function()
+                                local successDialog = LuaDialog(service)
+                                successDialog.setTitle("Update Successful")
+                                successDialog.setMessage("Please restart the plugin.")
+                                successDialog.setButton("OK", function()
+                                    successDialog.dismiss()
+                                end)
+                                successDialog.show()
+                            end
+                        }))
+                    else
+                        local restored = restoreFromBackup()
+                        cleanupFiles()
+                        
+                        local handler = Handler(Looper.getMainLooper())
+                        handler.post(luajava.createProxy("java.lang.Runnable", {
+                            run = function()
+                                local errorDialog = LuaDialog(service)
+                                if restored then
+                                    errorDialog.setTitle("Update Failed")
+                                    errorDialog.setMessage("Update failed. Old version restored.")
+                                else
+                                    errorDialog.setTitle("Update Failed")
+                                    errorDialog.setMessage("Update failed. Please try again.")
+                                end
+                                errorDialog.setButton("OK", function()
+                                    errorDialog.dismiss()
+                                end)
+                                errorDialog.show()
+                            end
+                        }))
+                    end
+                else
+                    local handler = Handler(Looper.getMainLooper())
+                    handler.post(luajava.createProxy("java.lang.Runnable", {
+                        run = function()
+                            local errorDialog = LuaDialog(service)
+                            errorDialog.setTitle("Update Failed")
+                            errorDialog.setMessage("Cannot write temporary file.")
+                            errorDialog.setButton("OK", function()
+                                errorDialog.dismiss()
+                            end)
+                            errorDialog.show()
+                        end
+                    }))
+                end
+            else
+                local handler = Handler(Looper.getMainLooper())
+                handler.post(luajava.createProxy("java.lang.Runnable", {
+                    run = function()
+                        local errorDialog = LuaDialog(service)
+                        errorDialog.setTitle("Update Failed")
+                        errorDialog.setMessage("Cannot download new script.")
+                        errorDialog.setButton("OK", function()
+                            errorDialog.dismiss()
+                        end)
+                        errorDialog.show()
+                    end
+                }))
+            end
+            updateInProgress = false
+        end)
+    end
+    
+    Thread(luajava.createProxy("java.lang.Runnable", {
+        run = performUpdate
+    })).start()
+end
 
 local function getService(name)
     if not cachedServices[name] then
@@ -2709,6 +2718,11 @@ function showWelcomeDialog()
     dialog.show()
     return true
 end
+
+-- Check for updates on startup
+Handler().postDelayed(function()
+    checkUpdate()
+end, 2000)
 
 initializeTTS()
 if not showWelcomeDialog() then 
