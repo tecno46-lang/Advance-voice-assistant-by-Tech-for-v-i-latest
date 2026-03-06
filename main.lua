@@ -50,7 +50,7 @@ function checkUpdate()
     if updateInProgress then return end
     Http.get(VERSION_URL, function(code, onlineVersion)
         if code == 200 and onlineVersion then
-            onlineVersion = tostring(onlineVersion):gsub("%s+", "")
+            onlineVersion = tostring(onlineVersion):match("^%s*(.-)%s*$")
             if onlineVersion and onlineVersion ~= "" then
                 if onlineVersion ~= CURRENT_VERSION then
                     showUpdateDialog(onlineVersion)
@@ -97,17 +97,47 @@ function downloadAndInstallUpdate()
     local function performUpdate()
         Http.get(SCRIPT_URL, function(code, newContent)
             if code == 200 and newContent then
-                local tempPath = PLUGIN_PATH .. ".temp"
+                local tempPath = PLUGIN_PATH .. ".temp_update"
+                local backupPath = PLUGIN_PATH .. ".backup"
+                
+                local function restoreFromBackup()
+                    if File(backupPath).exists() then
+                        os.rename(backupPath, PLUGIN_PATH)
+                        return true
+                    end
+                    return false
+                end
+                
+                local function cleanupFiles()
+                    pcall(function() os.remove(tempPath) end)
+                    pcall(function() os.remove(backupPath) end)
+                end
+                
                 local f = io.open(tempPath, "w")
                 if f then
                     f:write(newContent)
                     f:close()
+                    
+                    if File(PLUGIN_PATH).exists() then
+                        local backupFile = io.open(PLUGIN_PATH, "r")
+                        if backupFile then
+                            local backupContent = backupFile:read("*a")
+                            backupFile:close()
+                            local bf = io.open(backupPath, "w")
+                            if bf then
+                                bf:write(backupContent)
+                                bf:close()
+                            end
+                        end
+                    end
+                    
                     local success = pcall(function()
                         os.remove(PLUGIN_PATH)
                         os.rename(tempPath, PLUGIN_PATH)
                     end)
+                    
                     if success then
-                        pcall(function() os.remove(tempPath) end)
+                        cleanupFiles()
                         local successDialog = LuaDialog(service)
                         successDialog.setTitle("Update Successful")
                         successDialog.setMessage("Please restart the plugin.")
@@ -117,13 +147,23 @@ function downloadAndInstallUpdate()
                         end)
                         successDialog.show()
                     else
-                        pcall(function() os.remove(tempPath) end)
+                        local restored = restoreFromBackup()
+                        cleanupFiles()
                         local errorDialog = LuaDialog(service)
-                        errorDialog.setTitle("Update Failed")
-                        errorDialog.setMessage("Update failed. Please try again.")
+                        if restored then
+                            errorDialog.setTitle("Update Failed")
+                            errorDialog.setMessage("Update failed. Old version restored.")
+                        else
+                            errorDialog.setTitle("Update Failed")
+                            errorDialog.setMessage("Update failed. Please try again.")
+                        end
                         errorDialog.setButton("OK", function()
                             errorDialog.dismiss()
-                            service.speak("Update failed, please try again.")
+                            if restored then
+                                service.speak("Update failed, old version restored.")
+                            else
+                                service.speak("Update failed, please try again.")
+                            end
                         end)
                         errorDialog.show()
                     end
@@ -157,7 +197,7 @@ function downloadAndInstallUpdate()
 end
 
 local CONSTANTS = {
-    VERSION = "1.4",
+    VERSION = "1.2",
     PREF_NAME = "Hanzla_Final_Safety_V7_Enhanced",
     DELAYS = {
         SUPER_FAST = 80,
