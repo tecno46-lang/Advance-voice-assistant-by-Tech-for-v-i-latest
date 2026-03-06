@@ -50,7 +50,7 @@ function checkUpdate()
     if updateInProgress then return end
     Http.get(VERSION_URL, function(code, onlineVersion)
         if code == 200 and onlineVersion then
-            onlineVersion = tostring(onlineVersion):match("^%s*(.-)%s*$")
+            onlineVersion = tostring(onlineVersion):gsub("%s+", "")
             if onlineVersion and onlineVersion ~= "" then
                 if onlineVersion ~= CURRENT_VERSION then
                     showUpdateDialog(onlineVersion)
@@ -149,14 +149,14 @@ local CONSTANTS = {
     VERSION = "1.2",
     PREF_NAME = "Hanzla_Final_Safety_V7_Enhanced",
     DELAYS = {
-        SUPER_FAST = 30,
-        VERY_FAST = 50,
-        FAST = 80,
-        SHORT = 120,
-        MEDIUM = 200,
-        NORMAL = 300,
-        LONG = 500,
-        VERY_LONG = 800
+        SUPER_FAST = 80,
+        VERY_FAST = 120,
+        FAST = 200,
+        SHORT = 300,
+        MEDIUM = 500,
+        NORMAL = 800,
+        LONG = 1200,
+        VERY_LONG = 2000
     }
 }
 
@@ -590,7 +590,7 @@ function openHowToUseVideo()
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         service.startActivity(intent)
         speak("Video opened")
-    end, CONSTANTS.DELAYS.SUPER_FAST)
+    end, CONSTANTS.DELAYS.SHORT)
 end
 
 local function saveUserData(name, phone)
@@ -852,7 +852,7 @@ local function showHelpAndSupportDialog(ctx)
         local handler = Handler(Looper.getMainLooper())
         handler.postDelayed(luajava.createProxy("java.lang.Runnable", {
             run = performActions
-        }), 800)
+        }), CONSTANTS.DELAYS.NORMAL)
     end
 
     help_views.joinYouTubeChannelButton.onClick = function()
@@ -871,7 +871,7 @@ local function showHelpAndSupportDialog(ctx)
         local handler = Handler(Looper.getMainLooper())
         handler.postDelayed(luajava.createProxy("java.lang.Runnable", {
             run = performActions
-        }), 800)
+        }), CONSTANTS.DELAYS.NORMAL)
     end
 
     help_views.joinTelegramChannelButton.onClick = function()
@@ -890,7 +890,7 @@ local function showHelpAndSupportDialog(ctx)
         local handler = Handler(Looper.getMainLooper())
         handler.postDelayed(luajava.createProxy("java.lang.Runnable", {
             run = performActions
-        }), 800)
+        }), CONSTANTS.DELAYS.NORMAL)
     end
 
     help_views.goBackButton.onClick = function()
@@ -1929,35 +1929,35 @@ function startWhatsAppCall(packageName, contactName, phoneNumber, callType)
                 service.click({
                     {"Voice call", "Call"}
                 })
-            end, 2000)
+            end, CONSTANTS.DELAYS.SHORT)
             Handler().postDelayed(function()
                 service.click({
                     {"Voice call"}
                 })
-            end, 3000)
+            end, CONSTANTS.DELAYS.MEDIUM)
             Handler().postDelayed(function()
                 speak(appName .. " voice call started with " .. contactName)
-            end, 4000)
+            end, CONSTANTS.DELAYS.LONG)
         elseif callType == "video" then
             Handler().postDelayed(function()
                 service.click({
                     {"Video call", "Call"}
                 })
-            end, 2000)
+            end, CONSTANTS.DELAYS.SHORT)
             Handler().postDelayed(function()
                 service.click({
                     {"Video call"}
                 })
-            end, 3000)
+            end, CONSTANTS.DELAYS.MEDIUM)
             Handler().postDelayed(function()
                 speak(appName .. " video call started with " .. contactName)
-            end, 4000)
+            end, CONSTANTS.DELAYS.LONG)
         elseif callType == "chat" then
             Handler().postDelayed(function()
                 speak(appName .. " chat opened with " .. contactName)
-            end, 1500)
+            end, CONSTANTS.DELAYS.SHORT)
         end
-    end, 1500)
+    end, CONSTANTS.DELAYS.SHORT)
 end
 
 function getContactsFromGroup(groupName)
@@ -2277,7 +2277,7 @@ function runSystem(input)
                 speak("Mobile data toggled")
                 Handler().postDelayed(function()
                     service.toBack()
-                end, 600)
+                end, CONSTANTS.DELAYS.FAST)
             else
                 Handler().postDelayed(function()
                     if service.click(btnList) then
@@ -2285,9 +2285,9 @@ function runSystem(input)
                         speak("Mobile data toggled")
                         service.toBack()
                     end
-                end, 1000)
+                end, CONSTANTS.DELAYS.SHORT)
             end
-        end, 800)
+        end, CONSTANTS.DELAYS.NORMAL)
         return true
     end
     if input == getCommandKeyword("wf") then
@@ -2302,7 +2302,7 @@ function runSystem(input)
                 speak("Wi-Fi toggled")
                 Handler().postDelayed(function()
                     service.toBack()
-                end, 600)
+                end, CONSTANTS.DELAYS.FAST)
             else
                 Handler().postDelayed(function()
                     if service.click(btnList) then
@@ -2310,9 +2310,9 @@ function runSystem(input)
                         speak("Wi-Fi toggled")
                         service.toBack()
                     end
-                end, 1000)
+                end, CONSTANTS.DELAYS.SHORT)
             end
-        end, 800)
+        end, CONSTANTS.DELAYS.NORMAL)
         return true
     end
 
@@ -2356,7 +2356,7 @@ function runDirectAction(input)
                 speak("All members mentioned")
                 return true
             end
-        end, 1000)
+        end, CONSTANTS.DELAYS.SHORT)
         return true
     end
     
@@ -2419,7 +2419,7 @@ function runDirectAction(input)
                     {"DELETE", "Delete", "YES", "Yes"}
                 })
                 speak("Deleted for everyone")
-            end, 1000)
+            end, CONSTANTS.DELAYS.SHORT)
         else
             speak("Option not found")
         end
@@ -2434,7 +2434,7 @@ function runDirectAction(input)
                     {"DELETE", "Delete", "YES", "Yes"}
                 })
                 speak("Deleted for me")
-            end, 1000)
+            end, CONSTANTS.DELAYS.SHORT)
         else
             speak("Option not found")
         end
@@ -2449,7 +2449,7 @@ function runDirectAction(input)
                     {"DELETE", "Delete", "YES", "Yes"}
                 })
                 speak("Deleted")
-            end, 1000)
+            end, CONSTANTS.DELAYS.SHORT)
         else
             speak("Option not found")
         end
@@ -2497,7 +2497,7 @@ function runDirectAction(input)
                 else
                     speak("Could not find the voice conversation button")
                 end
-            end, 4000)
+            end, CONSTANTS.DELAYS.LONG)
         else
             speak("ChatGPT is not installed. Opening Play Store to install.")
             local playIntent = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" .. packageName))
@@ -2584,7 +2584,7 @@ function startSmartAssistant()
         if mainSpeechRecognizer then
             pcall(function() mainSpeechRecognizer.startListening(intent); isListening = true end)
         end
-    end, CONSTANTS.DELAYS.SUPER_FAST)
+    end, CONSTANTS.DELAYS.VERY_FAST)
 end
 
 function showWelcomeDialog()
