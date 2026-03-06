@@ -50,7 +50,7 @@ function checkUpdate()
     if updateInProgress then return end
     Http.get(VERSION_URL, function(code, onlineVersion)
         if code == 200 and onlineVersion then
-            onlineVersion = tostring(onlineVersion):match("^%s*(.-)%s*$")
+            onlineVersion = tostring(onlineVersion):gsub("%s+", "")
             if onlineVersion and onlineVersion ~= "" then
                 if onlineVersion ~= CURRENT_VERSION then
                     showUpdateDialog(onlineVersion)
