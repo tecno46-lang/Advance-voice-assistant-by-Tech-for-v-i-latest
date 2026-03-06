@@ -55,7 +55,7 @@ function checkUpdate()
                 if onlineVersion ~= CURRENT_VERSION then
                     showUpdateDialog(onlineVersion)
                 else
-                    speak("You are using the latest version")
+                    showLatestVersionDialog()
                 end
             else
                 speak("Update server returned empty version")
@@ -64,6 +64,17 @@ function checkUpdate()
             speak("Failed to check for updates (HTTP " .. tostring(code) .. ")")
         end
     end)
+end
+
+function showLatestVersionDialog()
+    local dialog = LuaDialog(service)
+    dialog.setTitle("Up to Date")
+    dialog.setMessage("You are on the latest version (" .. CURRENT_VERSION .. ")")
+    dialog.setButton("OK", function()
+        dialog.dismiss()
+        showSettingsDialog()
+    end)
+    dialog.show()
 end
 
 function showUpdateDialog(onlineVersion)
@@ -146,7 +157,7 @@ function downloadAndInstallUpdate()
 end
 
 local CONSTANTS = {
-    VERSION = "1.2",
+    VERSION = "1.4",
     PREF_NAME = "Hanzla_Final_Safety_V7_Enhanced",
     DELAYS = {
         SUPER_FAST = 80,
@@ -584,7 +595,7 @@ function openHowToUseVideo()
     if selectionDialog then selectionDialog.dismiss() end
     speak("Tutorial")
     Handler().postDelayed(function()
-        local youtubeUrl = "https://youtu.be/BRgOGSFPz2I"
+        local youtubeUrl = "https://youtu.be/O5R7KBdWgwg"
         local intent = Intent(Intent.ACTION_VIEW)
         intent.setData(Uri.parse(youtubeUrl))
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
