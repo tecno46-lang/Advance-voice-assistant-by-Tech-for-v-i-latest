@@ -41,7 +41,7 @@ import "android.os.Looper"
 
 local updateInProgress = false
 local updateDlg = nil
-local GITHUB_RAW_URL = "https://raw.githubusercontent.com/honeychyt4645ch-bit/Advance-voice-assistant-by-tech-for-V-I/main/"
+local GITHUB_RAW_URL = "https://raw.githubusercontent.com/tecno46-lang/Advance-voice-assistant-by-Tech-for-v-i-latest/main/"
 local VERSION_URL = GITHUB_RAW_URL .. "version.txt"
 local SCRIPT_URL = GITHUB_RAW_URL .. "main.lua"
 local PLUGIN_PATH = "/storage/emulated/0/解说/Plugins/Advance voice assistant by tech for V I develop by Muhammad hanzla/main.lua"
