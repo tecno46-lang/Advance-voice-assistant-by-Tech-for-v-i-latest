@@ -2682,3 +2682,49 @@ function showWelcomeDialog()
     buttonLayout.setPadding(0, 20, 0, 0)
     local tutorialBtn = Button(service)
     tutorialBtn.setText("Watch Tutorial")
+    tutorialBtn.setBackgroundColor(0xFF2196F3)
+    tutorialBtn.setTextColor(0xFFFFFFFF)
+    tutorialBtn.setPadding(15, 12, 15, 12)
+    tutorialBtn.setLayoutParams(LinearLayout.LayoutParams(0, -2, 1))
+    local okayBtn = Button(service)
+    okayBtn.setText("Okay")
+    okayBtn.setBackgroundColor(0xFF4CAF50)
+    okayBtn.setTextColor(0xFFFFFFFF)
+    okayBtn.setPadding(15, 12, 15, 12)
+    okayBtn.setLayoutParams(LinearLayout.LayoutParams(0, -2, 1))
+    buttonLayout.addView(tutorialBtn)
+    buttonLayout.addView(okayBtn)
+    layout.addView(buttonLayout)
+    local dialog = LuaDialog(service)
+    dialog.setTitle("Welcome!")
+    dialog.setView(layout)
+    dialog.setCancelable(false)
+    tutorialBtn.onClick = function()
+        if dontShowCheckBox.isChecked() then
+            getEdit().putBoolean(WELCOME_DIALOG_SHOWN_KEY, true)
+            getEdit().commit()
+        end
+        dialog.dismiss()
+        openHowToUseVideo()
+    end
+    okayBtn.onClick = function()
+        if dontShowCheckBox.isChecked() then
+            getEdit().putBoolean(WELCOME_DIALOG_SHOWN_KEY, true)
+            getEdit().commit()
+        end
+        dialog.dismiss()
+        startSmartAssistant()
+    end
+    dialog.show()
+    return true
+end
+
+-- Check for updates on startup
+Handler().postDelayed(function()
+    checkUpdate()
+end, 2000)
+
+initializeTTS()
+if not showWelcomeDialog() then 
+    startSmartAssistant()
+end
