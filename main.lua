@@ -49,7 +49,7 @@ local updateAvailable = false
 local autoCheckDone = false
 
 local CONSTANTS = {
-    VERSION = "1.3",
+    VERSION = "1.2",
     PREF_NAME = "Hanzla_Final_Safety_V7_Enhanced",
     DELAYS = {
         SUPER_FAST = 80,
