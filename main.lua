@@ -40,11 +40,11 @@ import "com.androlua.Http"
 import "android.os.Looper"
 
 -- =====================================================
--- Constants (Version 1.1 - for testing update)
+-- Constants
 -- =====================================================
 
 local CONSTANTS = {
-    VERSION = "1.1",  -- پرانا ورژن تاکہ اپڈیٹ آئے
+    VERSION = "1.2",
     PREF_NAME = "Hanzla_Final_Safety_V7_Enhanced",
     DELAYS = {
         SUPER_FAST = 80,
@@ -55,16 +55,17 @@ local CONSTANTS = {
         NORMAL = 800,
         LONG = 1200,
         VERY_LONG = 2000,
-        BUTTON_WAIT = 1000,
-        BUTTON_LONG_WAIT = 2000,
-        APP_OPEN_WAIT = 2000,
+        -- نئے ڈیلے
+        BUTTON_WAIT = 1000,  -- 1 سیکنڈ
+        BUTTON_LONG_WAIT = 2000,  -- 2 سیکنڈ
+        APP_OPEN_WAIT = 2000,  -- ایپ کھلنے کا انتظار
     }
 }
 
 local CURRENT_VERSION = CONSTANTS.VERSION
 
 -- =====================================================
--- Update Feature (No Backup)
+-- Update Feature
 -- =====================================================
 
 local GITHUB_RAW_URL = "https://raw.githubusercontent.com/tecno46-lang/Advance-voice-assistant-by-Tech-for-v-i-latest/main/"
@@ -142,22 +143,32 @@ function downloadAndInstallUpdate()
     Thread(createRunnable(function()
         Http.get(SCRIPT_URL, function(code, newContent)
             if code == 200 and newContent then
-                local tempPath = PLUGIN_PATH .. ".temp"
-                
-                -- پہلے عارضی فائل بنائیں
+                local tempPath = PLUGIN_PATH .. ".temp_update"
+                local backupPath = PLUGIN_PATH .. ".backup"
+                local function restoreFromBackup()
+                    if File(backupPath).exists() then
+                        os.rename(backupPath, PLUGIN_PATH)
+                        return true
+                    end
+                    return false
+                end
+                local function cleanupFiles()
+                    pcall(function() os.remove(tempPath) end)
+                    pcall(function() os.remove(backupPath) end)
+                end
+                if File(PLUGIN_PATH).exists() then
+                    os.rename(PLUGIN_PATH, backupPath)
+                end
                 local f = io.open(tempPath, "w")
                 if f then
                     f:write(newContent)
                     f:close()
-                    
-                    -- پرانی فائل کو ڈیلیٹ کریں
                     local success = pcall(function()
                         os.remove(PLUGIN_PATH)
-                        -- عارضی فائل کو اصلی نام دے دیں
                         os.rename(tempPath, PLUGIN_PATH)
                     end)
-                    
                     if success then
+                        cleanupFiles()
                         updateAvailable = false
                         mainHandler.post(createRunnable(function()
                             speak("Update successful")
@@ -172,10 +183,14 @@ function downloadAndInstallUpdate()
                             successDialog.show()
                         end))
                     else
-                        -- اگر کامیاب نہ ہو تو عارضی فائل ڈیلیٹ کر دیں
-                        pcall(function() os.remove(tempPath) end)
+                        local restored = restoreFromBackup()
+                        cleanupFiles()
                         mainHandler.post(createRunnable(function()
-                            speak("Update failed")
+                            if restored then
+                                speak("Update failed, old version restored")
+                            else
+                                speak("Update failed")
+                            end
                             showToast("Update failed")
                         end))
                     end
@@ -1894,6 +1909,10 @@ function showWhatsAppSelectionDialog(contactName, phoneNumber, callType, callbac
     speak("Select WhatsApp")
 end
 
+-- =====================================================
+-- Updated WhatsApp Call Functions with proper delays
+-- =====================================================
+
 function startWhatsAppVoiceCall(packageName, contactName, phoneNumber)
     if not packageName then 
         speak("WhatsApp not selected")
@@ -1912,6 +1931,7 @@ function startWhatsAppVoiceCall(packageName, contactName, phoneNumber)
     speak("Opening " .. appName .. " for " .. contactName)
     service.startActivity(intent)
     
+    -- Voice call specific code with proper delays
     Handler().postDelayed(function()
         service.click({
             {"Voice call", "Call"}
@@ -1942,6 +1962,7 @@ function startWhatsAppVideoCall(packageName, contactName, phoneNumber)
     speak("Opening " .. appName .. " for " .. contactName)
     service.startActivity(intent)
     
+    -- Video call specific code with proper delays
     Handler().postDelayed(function()
         service.click({
             {"Video call", "Call"}
@@ -1971,6 +1992,7 @@ function startWhatsAppChat(packageName, contactName, phoneNumber)
     local appName = (packageName == WHATSAPP_PACKAGES.messenger) and "WhatsApp Messenger" or "WhatsApp Business"
     speak("Opening " .. appName .. " for " .. contactName)
     service.startActivity(intent)
+    -- No additional clicks needed for chat
 end
 
 function getContactsFromGroup(groupName)
@@ -2166,6 +2188,10 @@ function runMediaSearch(input)
     return true
 end
 
+-- =====================================================
+-- Updated System Command Handler with new delete and send code
+-- =====================================================
+
 function runSystem(input)
     if input:find(getCommandKeyword("show menu")) then
         showSettingsDialog()
@@ -2199,6 +2225,7 @@ function runSystem(input)
         return true
     end
     
+    -- Updated send now with new code and proper delay
     if input == getCommandKeyword("send now") then
         if service.click({
             {"%Direct long press",
@@ -2229,6 +2256,7 @@ function runSystem(input)
         return true
     end
     
+    -- Updated delete from everyone with new code
     if input == getCommandKeyword("delete from everyone") then
         if service.click({
             {"%Direct long press",
@@ -2537,6 +2565,7 @@ function runDirectAction(input)
         return openAppWithForceLogic(appName)
     end
     
+    -- Updated talk with me with proper 2 second delay
     if input == getCommandKeyword("talk with me") then
         local packageName = "com.openai.chatgpt"
         local pm = service.getPackageManager()
@@ -2545,6 +2574,7 @@ function runDirectAction(input)
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             service.startActivity(intent)
             speak("Opening ChatGPT")
+            -- 2 second delay before looking for the button
             Handler().postDelayed(function()
                 if service.click({
                     {"Start a voice conversation"}
@@ -2553,7 +2583,7 @@ function runDirectAction(input)
                 else
                     speak("Could not find the voice conversation button")
                 end
-            end, CONSTANTS.DELAYS.APP_OPEN_WAIT)
+            end, CONSTANTS.DELAYS.APP_OPEN_WAIT) -- 2000ms delay
         else
             speak("ChatGPT is not installed. Opening Play Store to install.")
             local playIntent = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" .. packageName))
